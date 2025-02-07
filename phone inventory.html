@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Liquor Bottle Weight</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background-image: url('C:\Users\Dell\OneDrive\Desktop\Inventory.jpeg');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            background-color: rgba(255, 255, 255, 0.8);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 600px;
+        }
+
+        h2 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #555;
+        }
+
+        input[type="text"],
+        input[type="number"],
+        select {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 16px;
+            color: #333;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        input[readonly] {
+            background-color: #f1f1f1;
+            color: #888;
+        }
+
+        .field-group {
+            margin-bottom: 20px;
+        }
+
+        .result-header {
+            font-size: 18px;
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .error {
+            color: red;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+
+        #qr-reader {
+            width: 100%;
+            max-width: 400px;
+            margin: 20px auto;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            text-align: center;
+        }
+    </style>
+    <script src="https://unpkg.com/html5-qrcode/minified/html5-qrcode.min.js"></script>
+    <script>
+        function updateWeight() {
+            var selectedName = document.getElementById("LiquorName").value;
+
+            var bottleWeights = {
+                "GLENFIDDICH 12 YEAR": 560,
+                "GLENFIDDICH 15 YEAR": 578,
+                "THE GLENLIVIT 12 YO": 680,
+                "THE GLENLIVIT 18 YO": 808,
+                "TALISKER 10 YO": 490,
+                "GODAWAN S/MALT FRUIT & SPI 01": 584,
+                "GODAWAN S/MALT RICH & ROUND 02": 610,
+                "ABERFELDY 12 YO":510,
+                "LAPHORIGE SELECT ISLAY 10 YRS":510,
+                "LAPHORIGE SELECT ISLAY":476,
+                "BOWMORE 12 YRS":464,
+                "ARDMORE HIGHLAND":470,
+                "GLENMORANGIE":582,
+                "ROYAL BRACKLA": 750,
+                "AULTMORE":908,
+            };
+
+            var bottleWeight = bottleWeights[selectedName] || "";
+            document.getElementById("bottleWeight").value = bottleWeight;
+            document.getElementById("weightDifference").value = "";
+        }
+
+        function calculateDifference() {
+            var bottleWeight = parseFloat(document.getElementById("bottleWeight").value);
+            var manualWeight = parseFloat(document.getElementById("manualWeight").value);
+
+            if (!isNaN(bottleWeight) && !isNaN(manualWeight)) {
+                var difference = Math.abs(bottleWeight - manualWeight);
+                document.getElementById("weightDifference").value = difference;
+            } else {
+                document.getElementById("weightDifference").value = "Invalid input";
+            }
+        }
+
+        function connectBluetoothScale() {
+            try {
+                const device = await navigator.bluetooth.requestDevice({
+                    filters: [{ services: ['battery_service'] }],
+                    optionalServices: ['weight_scale']
+                });
+
+                const server = await device.gatt.connect();
+                const service = await server.getPrimaryService('weight_scale');
+                const characteristic = await service.getCharacteristic('weight_measurement');
+
+                characteristic.startNotifications();
+                characteristic.addEventListener('characteristicvaluechanged', handleWeightChange);
+                console.log("Connected to Bluetooth scale.");
+            } catch (error) {
+                console.log("Error: ", error);
+            }
+        }
+
+        function handleWeightChange(event) {
+            const weightData = event.target.value;
+            const weightInGrams = weightData.getUint16(0); 
+            document.getElementById("manualWeight").value = weightInGrams;
+            calculateDifference();
+        }
+
+        function onQRCodeScanned(qrCodeMessage) {
+            const liquorBottleName = qrCodeMessage;
+
+            const dropdown = document.getElementById("LiquorName");
+            for (let i = 0; i < dropdown.options.length; i++) {
+                if (dropdown.options[i].value === liquorBottleName) {
+                    dropdown.selectedIndex = i;
+                    updateWeight();
+                    break;
+                }
+            }
+        }
+
+        function startQRCodeScanner() {
+            const html5QrCode = new Html5Qrcode("qr-reader");
+
+            html5QrCode.start(
+                { facingMode: "environment" }, // Use rear camera on mobile devices
+                {
+                    fps: 10, // frames per second
+                    qrbox: 250 // Size of QR code box
+                },
+                onQRCodeScanned,
+                function(errorMessage) {
+                    console.log("QR Code scanning error: " + errorMessage);
+                }
+            ).catch((err) => {
+                alert("Error accessing camera: " + err);
+            });
+        }
+    </script>
+</head>
+<body>
+
+    <div class="container">
+        <h2>Liquor Bottle Weight Scale</h2>
+
+        <div class="field-group">
+            <label for="LiquorName">Select Liquor Bottle:</label>
+            <select id="LiquorName" onchange="updateWeight()">
+                <option value="">Select a bottle</option>
+                <option value="GLENFIDDICH 12 YEAR">GLENFIDDICH 12 YEAR</option>
+                <option value="GLENFIDDICH 15 YEAR">GLENFIDDICH 15 YEAR</option>
+                <option value="THE GLENLIVIT 12 YO">THE GLENLIVIT 12 YO</option>
+                <option value="THE GLENLIVIT 18 YO">THE GLENLIVIT 18 YO</option>
+                <option value="TALISKER 10 YO">TALISKER 10 YO</option>
+                <option value="GODAWAN S/MALT FRUIT & SPI 01">GODAWAN S/MALT FRUIT & SPI 01</option>
+                <option value="GODAWAN S/MALT RICH & ROUND 02">GODAWAN S/MALT RICH & ROUND 02</option>
+                <option value="ABERFELDY 12 YO">ABERFELDY 12 YO</option>
+                <option value="LAPHORIGE SELECT ISLAY 10 YRS">LAPHORIGE SELECT ISLAY 10 YRS</option>
+                <option value="LAPHORIGE SELECT ISLAY">LAPHORIGE SELECT ISLAY</option>
+                <option value="BOWMORE 12 YRS">BOWMORE 12 YRS</option>
+                <!-- Add other bottle options as needed -->
+            </select>
+        </div>
+
+        <div class="field-group">
+            <label for="bottleWeight">Bottle Weight (g):</label>
+            <input type="text" id="bottleWeight" name="bottleWeight" readonly>
+        </div>
+
+        <div class="field-group">
+            <label for="manualWeight">Enter Actual Weight (g):</label>
+            <input type="number" id="manualWeight" name="manualWeight">
+        </div>
+
+        <div class="field-group">
+            <label for="weightDifference" class="result-header">Weight Difference (g):</label>
+            <input type="text" id="weightDifference" name="weightDifference" readonly>
+        </div>
+
+        <button onclick="connectBluetoothScale()">Connect Bluetooth Scale</button>
+    </div>
+
+    <div id="qr-reader"></div>
+    <button onclick="startQRCodeScanner()">Start QR Code Scanner</button>
+
+</body>
+</html>
